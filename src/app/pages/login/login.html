@@ -1,1 +1,22 @@
-<p>login works!</p>
+<div class="min-h-screen flex items-center justify-center bg-gray-100">
+  <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
+    <h1 class="text-2xl font-semibold mb-4 text-center">Sign in</h1>
+    @if(error()){
+    <p class="text-red-600 text-sm mt-2 mb-2">{{ error() }}</p>
+    }
+    <input
+      type="text"
+      placeholder="Enter your name"
+      class="w-full border px-4 py-2 rounded mb-3 focus:outline-none focus:ring transition"
+      [value]="name()"
+      (input)="name.set($any($event.target).value)"
+    />
+
+    <button
+      (click)="login()"
+      class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition cursor-pointer"
+    >
+      Sign in
+    </button>
+  </div>
+</div>
