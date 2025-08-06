@@ -1,1 +1,126 @@
-<p>room works!</p>
+@if(connected()){
+<ng-container>
+  <div class="h-screen flex bg-gray-100">
+    <aside class="w-1/5 shadow-2xl bg-white p-6 overflow-auto hidden lg:block">
+      <h2 class="text-2xl font-semibold mb-4">Participants</h2>
+      <ul class="space-y-3">
+        @for (u of users(); track $index) {
+        <li
+          class="flex items-center justify-between p-2 bg-gray-50 rounded-lg shadow-md hover:bg-gray-100 min-h-[64px]"
+        >
+          <span [class.font-bold]="u.name === userService.user()?.name">
+            {{ u.name }} ({{ u.role }})
+          </span>
+          @if(role() === 'creator' && u.role !== 'creator'){
+          <button
+            class="text-xs bg-slate-500 text-white px-4 py-2 cursor-pointer rounded-md hover:bg-slate-700 duration-200 hover:scale-110"
+            (click)="
+              changeRole(u.name, u.role === 'viewer' ? 'editor' : 'viewer')
+            "
+          >
+            {{ u.role === "viewer" ? "Make editor" : "Make a viewer" }}
+          </button>
+          }
+        </li>
+        }
+      </ul>
+    </aside>
+    <main class="flex-1 p-6 overflow-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Slides</h1>
+        @if(role()==='creator'){
+        <button
+          class="bg-slate-500 text-white gap-1 px-4 py-2 cursor-pointer tracking-widest rounded-md hover:bg-slate-400 duration-200 hover:scale-110"
+          (click)="addSlide()"
+        >
+          New slide
+        </button>
+        }
+      </div>
+
+      <div class="grid grid-cols-1 gap-6">
+        @for (slide of slides(); track slide.id) {
+        <h2 class="text-xl font-semibold mb-4">Slide {{ $index + 1 }}</h2>
+        <div
+          id="slide-{{ slide.id }}"
+          class="relative bg-white h-128 rounded shadow-md mb-4 overflow-hidden"
+        >
+          @for (el of elements()[slide.id]; track $index) {
+          <ng-container>
+            <div
+              class="absolute group cursor-move"
+              cdkDrag
+              [cdkDragBoundary]="'#slide-' + slide.id"
+              [cdkDragFreeDragPosition]="{ x: el.x, y: el.y }"
+              (cdkDragStarted)="selectElement(el.id, slide.id)"
+              (cdkDragEnded)="onDragEnded($event, slide.id, el)"
+              [class.border]="
+                role() !== 'viewer' && selectedElementId() === el.id
+              "
+            >
+              @if(isTextBlock(el)){
+              <p
+                class="p-2"
+                [style.left.px]="el.x"
+                [style.top.px]="el.y"
+                [style.width.px]="el.width"
+                [style.height.px]="el.height"
+                [style.fontSize.px]="el.fontSize"
+                [style.fontFamily]="el.fontFamily"
+                [style.color]="el.color"
+              >
+                {{ el.text }}
+              </p>
+              } @if(isImageBlock(el)){
+              <img
+                class="p-2"
+                [src]="'images/' + el.url"
+                [style.left.px]="el.x"
+                [style.top.px]="el.y"
+                [style.width.px]="el.width"
+                [style.height.px]="el.height"
+                [alt]="el.url"
+              />
+              } @if(role() !== 'viewer'){
+              <button
+                (click)="removeElement(slide.id, el.id)"
+                class="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ✕
+              </button>
+              }
+            </div>
+          </ng-container>
+
+          }
+        </div>
+        <div class="relative p-4">
+          @if(role() !== 'viewer'){
+          <div class="flex space-x-3">
+            <button
+              class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              (click)="addTextBlock(slide.id)"
+            >
+              New text
+            </button>
+            <button
+              class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              (click)="addImageBlock(slide.id)"
+            >
+              New image
+            </button>
+          </div>
+          }
+        </div>
+        }
+      </div>
+    </main>
+  </div>
+</ng-container>
+}@else {
+<ng-template>
+  <div class="h-screen flex items-center justify-center bg-gray-100">
+    <p class="text-gray-600 text-lg">Loading…</p>
+  </div>
+</ng-template>
+}
