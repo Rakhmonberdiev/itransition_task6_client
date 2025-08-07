@@ -6,12 +6,7 @@ import {
 } from '@microsoft/signalr';
 import { environment } from '../../environments/environment';
 import { UserService } from './user.service';
-import {
-  ImageBlock,
-  Slide,
-  SlideElement,
-  TextBlock,
-} from '../models/presentation.model';
+import { Slide, SlideElement } from '../models/presentation.model';
 import { firstValueFrom } from 'rxjs';
 import { PresentationService } from './presentation.service';
 type Role = 'creator' | 'editor' | 'viewer';
@@ -130,7 +125,15 @@ export class HubService {
       )
     );
   }
-
+  public getConnectionId(): string {
+    if (
+      !this.hubConnection ||
+      this.hubConnection.state !== HubConnectionState.Connected
+    ) {
+      throw new Error('Hub is not connected');
+    }
+    return this.hubConnection.connectionId!;
+  }
   disconnect(): void {
     this.hubConnection.stop();
     this.isConnected.set(false);
@@ -148,16 +151,6 @@ export class HubService {
       presentationId,
       slideId,
       text
-    );
-  }
-
-  addImageBlock(presentationId: string, slideId: string, url: string) {
-    this.ensureConnected();
-    return this.hubConnection.invoke(
-      'AddImageBlock',
-      presentationId,
-      slideId,
-      url
     );
   }
 

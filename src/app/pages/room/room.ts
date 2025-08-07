@@ -1,20 +1,14 @@
-import {
-  Component,
-  computed,
-  OnDestroy,
-  OnInit,
-  Signal,
-  signal,
-} from '@angular/core';
+import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { HubService } from '../../services/hub.service';
-import { CdkDragEnd, DragDropModule, DragRef } from '@angular/cdk/drag-drop';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 import {
   ImageBlock,
   SlideElement,
   TextBlock,
 } from '../../models/presentation.model';
 import { UserService } from '../../services/user.service';
+import { PresentationService } from '../../services/presentation.service';
 @Component({
   selector: 'app-room',
   imports: [DragDropModule],
@@ -30,9 +24,13 @@ export class Room implements OnInit, OnDestroy {
   connected = computed(() => this.hub.isConnected());
   currentSlideId = signal<string | null>(null);
   selectedElementId = signal<string | null>(null);
+  editingElementId = signal<string | null>(null);
+  editingText = signal<string>('');
+  imageLoading = signal(false);
   constructor(
     private route: ActivatedRoute,
     private hub: HubService,
+    private presentationService: PresentationService,
     public userService: UserService
   ) {}
 
@@ -45,6 +43,56 @@ export class Room implements OnInit, OnDestroy {
     this.hub.disconnect();
   }
 
+  onFileSelected(event: Event, slideId: string): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.imageLoading.set(true);
+    const connId = this.hub.getConnectionId();
+    this.presentationService
+      .uploadImage(this.presentationId, slideId, file, connId)
+      .subscribe({
+        next: () => {
+          this.imageLoading.set(false);
+        },
+        error: (err) => {
+          this.imageLoading.set(false);
+        },
+      });
+  }
+  startEditingTextBlock(slideId: string, el: TextBlock) {
+    if (this.role() === 'viewer') return;
+    this.selectedElementId.set(el.id);
+    this.editingElementId.set(el.id);
+    this.editingText.set(el.text);
+  }
+  saveTextEdit(slideId: string) {
+    const id = this.editingElementId();
+    if (!id) return;
+    const newText = this.editingText();
+    const arr = this.hub.elements()[slideId] ?? [];
+    const el = arr.find((x) => x.id === id) as TextBlock | undefined;
+    if (!el || newText === el.text) {
+      this.editingElementId.set(null);
+      return;
+    }
+
+    const updated: TextBlock = { ...el, text: newText };
+    this.hub.elements.update((map) => {
+      const a = map[slideId] ?? [];
+      const idx = a.findIndex((x) => x.id === id);
+      if (idx > -1) a[idx] = updated;
+      return { ...map, [slideId]: a };
+    });
+    this.hub
+      .updateElement(this.presentationId, slideId, updated)
+      .catch(console.error);
+
+    this.editingElementId.set(null);
+  }
+  cancelTextEdit() {
+    this.editingElementId.set(null);
+  }
   onDragEnded(event: any, slideId: string, el: SlideElement) {
     if (this.role() === 'viewer') return;
     const { x, y } = event.source.getFreeDragPosition();
@@ -58,6 +106,7 @@ export class Room implements OnInit, OnDestroy {
     this.hub
       .updateElement(this.presentationId, slideId, { ...el, x, y })
       .catch(console.error);
+    this.selectedElementId.set(null);
   }
   selectElement(elId: string, slideId: string) {
     this.selectedElementId.set(elId);
@@ -76,12 +125,9 @@ export class Room implements OnInit, OnDestroy {
   }
 
   addTextBlock(slideId: string): void {
-    this.hub.addTextBlock(this.presentationId, slideId, 'Новый текст');
+    this.hub.addTextBlock(this.presentationId, slideId, 'Hello world');
   }
 
-  addImageBlock(slideId: string): void {
-    this.hub.addImageBlock(this.presentationId, slideId, 'welcome.png');
-  }
   removeElement(slideId: string, elementId: string): void {
     this.hub.removeElement(this.presentationId, slideId, elementId);
   }
