@@ -31,4 +31,14 @@ export class PresentationService {
     const url = `${this.baseUrl}/${presentationId}/slides/${slideId}/upload-image`;
     return this.http.post<void>(url, formData, { headers });
   }
+
+  createPresentation(
+    title: string,
+    creatorName: string
+  ): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(this.baseUrl + '/new', {
+      title,
+      creatorName,
+    });
+  }
 }
